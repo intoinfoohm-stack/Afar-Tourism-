@@ -1,0 +1,9 @@
+{
+  "name": "የአፋር ቱሪዝም መግቢያ (Afar Tourism Explorer)",
+  "description": "የአፋር ክልል አስደናቂ የቱሪዝም መስህቦችን የሚያስተዋውቅ እና የጉዞ እቅድ ለማውጣት የሚረዳ መተግበሪያ።",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera",
+    "microphone"
+  ]
+}

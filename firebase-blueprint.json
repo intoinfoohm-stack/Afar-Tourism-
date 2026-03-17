@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "User's profile photo URL" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User role for access control" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Trip": {
+      "title": "Trip",
+      "description": "A travel trip planned by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique trip ID" },
+        "title": { "type": "string", "description": "Name of the trip" },
+        "destination": { "type": "string", "description": "Destination city or country" },
+        "startDate": { "type": "string", "format": "date", "description": "Trip start date" },
+        "endDate": { "type": "string", "format": "date", "description": "Trip end date" },
+        "ownerId": { "type": "string", "description": "UID of the trip creator" },
+        "collaborators": { "type": "array", "items": { "type": "string" }, "description": "List of collaborator UIDs" },
+        "isPublic": { "type": "boolean", "description": "Whether the trip is viewable via a public link" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Trip creation timestamp" },
+        "aiInsights": { "type": "string", "description": "AI-generated travel tips and insights" },
+        "coverPhotoUrl": { "type": "string", "description": "URL of the trip's cover photo" }
+      },
+      "required": ["title", "destination", "ownerId"]
+    },
+    "ItineraryItem": {
+      "title": "Itinerary Item",
+      "description": "An activity or event in a trip itinerary",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique item ID" },
+        "tripId": { "type": "string", "description": "ID of the parent trip" },
+        "title": { "type": "string", "description": "Activity name" },
+        "description": { "type": "string", "description": "Activity details" },
+        "startTime": { "type": "string", "format": "date-time", "description": "Activity start time" },
+        "endTime": { "type": "string", "format": "date-time", "description": "Activity end time" },
+        "location": { "type": "string", "description": "Activity location" },
+        "type": { "type": "string", "enum": ["flight", "hotel", "activity", "restaurant", "transport"], "description": "Type of activity" }
+      },
+      "required": ["tripId", "title", "startTime"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A travel application/booking for a specific attraction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who made the booking" },
+        "attractionId": { "type": "string", "description": "ID of the attraction being booked" },
+        "attractionName": { "type": "string", "description": "Name of the attraction" },
+        "travelDate": { "type": "string", "format": "date", "description": "Planned travel date" },
+        "numberOfPeople": { "type": "integer", "description": "Number of travelers" },
+        "totalAmount": { "type": "number", "description": "Total price in ETB" },
+        "status": { "type": "string", "enum": ["pending", "paid", "cancelled"], "description": "Booking status" },
+        "paymentMethod": { "type": "string", "description": "Method used for payment" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Booking timestamp" }
+      },
+      "required": ["userId", "attractionId", "travelDate", "numberOfPeople", "totalAmount", "status"]
+    },
+    "BlogPost": {
+      "title": "Blog Post",
+      "description": "A travel blog post or article",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique post ID" },
+        "title": { "type": "string", "description": "Post title" },
+        "content": { "type": "string", "description": "Post content in Markdown" },
+        "authorId": { "type": "string", "description": "UID of the post author" },
+        "authorName": { "type": "string", "description": "Display name of the author" },
+        "authorPhoto": { "type": "string", "description": "URL of the author's photo" },
+        "coverImage": { "type": "string", "description": "URL of the post's cover image" },
+        "category": { "type": "string", "enum": ["news", "story", "culture", "guide"], "description": "Post category" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "List of tags" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Post creation timestamp" },
+        "isPublished": { "type": "boolean", "description": "Whether the post is public" }
+      },
+      "required": ["title", "content", "authorId", "authorName"]
+    },
+    "Media": {
+      "title": "Media",
+      "description": "A photo or video uploaded by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique media ID" },
+        "title": { "type": "string", "description": "Media title" },
+        "description": { "type": "string", "description": "Media description" },
+        "url": { "type": "string", "description": "URL of the media file" },
+        "type": { "type": "string", "enum": ["image", "video"], "description": "Type of media" },
+        "userId": { "type": "string", "description": "UID of the uploader" },
+        "userName": { "type": "string", "description": "Display name of the uploader" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Upload timestamp" }
+      },
+      "required": ["title", "url", "type", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/trips/{tripId}": {
+      "schema": "Trip",
+      "description": "Travel trips"
+    },
+    "/trips/{tripId}/itinerary/{itemId}": {
+      "schema": "ItineraryItem",
+      "description": "Activities within a trip"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Travel applications and payment records"
+    },
+    "/posts/{postId}": {
+      "schema": "BlogPost",
+      "description": "Blog posts and articles"
+    },
+    "/media/{mediaId}": {
+      "schema": "Media",
+      "description": "User uploaded photos and videos"
+    }
+  }
+}

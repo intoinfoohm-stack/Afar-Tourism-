@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-news-bg: #FDFCF0;
+  --color-news-ink: #1A1A1A;
+  --color-news-line: rgba(26, 26, 26, 0.15);
+}
+
+@layer base {
+  body {
+    @apply bg-news-bg text-news-ink font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+.newspaper-grid {
+  background-image: linear-gradient(var(--color-news-line) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--color-news-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.newspaper-border {
+  @apply border border-news-ink/20;
+}
+
+.newspaper-divider {
+  @apply border-t-2 border-news-ink border-double my-8;
+}

@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, displayName, email, photoURL, createdAt
+    //
+    // Collection: trips
+    // Fields: id, title, destination, startDate, endDate, ownerId, collaborators, createdAt, aiInsights
+    //
+    // Collection: trips/{tripId}/itinerary
+    // Fields: id, tripId, title, description, startTime, endTime, location, type
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isTripOwner(tripId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/trips/$(tripId)).data.ownerId == request.auth.uid;
+    }
+
+    function isTripCollaborator(tripId) {
+      let trip = get(/databases/$(database)/documents/trips/$(tripId)).data;
+      return isAuthenticated() && (trip.ownerId == request.auth.uid || request.auth.uid in trip.collaborators);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "intoinfoohm@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+    }
+
+    // Helper for email validation
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Helper for URL validation
+    function isValidUrl(url) {
+      return url == null || (url is string && (url.matches("^https?://.*") || url == ""));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'role', 'createdAt']) &&
+             data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || data.photoURL == null || isValidUrl(data.photoURL)) &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidTrip(data) {
+      let allowedFields = ['title', 'destination', 'startDate', 'endDate', 'ownerId', 'collaborators', 'isPublic', 'createdAt', 'aiInsights', 'coverPhotoUrl'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.keys().hasAll(['title', 'destination', 'ownerId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.destination is string && data.destination.size() > 0 && data.destination.size() < 100 &&
+             data.ownerId == request.auth.uid &&
+             (!('startDate' in data) || data.startDate is string) &&
+             (!('endDate' in data) || data.endDate is string) &&
+             (!('collaborators' in data) || (data.collaborators is list && data.collaborators.size() < 20)) &&
+             (!('isPublic' in data) || data.isPublic is bool) &&
+             (!('aiInsights' in data) || (data.aiInsights is string && data.aiInsights.size() < 5000)) &&
+             (!('coverPhotoUrl' in data) || isValidUrl(data.coverPhotoUrl));
+    }
+
+    function isValidBooking(data) {
+      let allowedFields = ['userId', 'attractionId', 'attractionName', 'travelDate', 'numberOfPeople', 'totalAmount', 'status', 'paymentMethod', 'createdAt'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.keys().hasAll(['userId', 'attractionId', 'travelDate', 'numberOfPeople', 'totalAmount', 'status']) &&
+             data.userId == request.auth.uid &&
+             data.attractionId is string && data.attractionId.size() < 100 &&
+             (!('attractionName' in data) || (data.attractionName is string && data.attractionName.size() < 200)) &&
+             data.travelDate is string &&
+             data.numberOfPeople is number && data.numberOfPeople > 0 && data.numberOfPeople < 100 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status in ['pending', 'paid', 'cancelled'] &&
+             (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() < 50)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidItineraryItem(data) {
+      let allowedFields = ['tripId', 'title', 'description', 'startTime', 'endTime', 'location', 'type'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.keys().hasAll(['tripId', 'title', 'startTime']) &&
+             data.tripId is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
+             data.startTime is string &&
+             (!('endTime' in data) || data.endTime is string) &&
+             (!('location' in data) || (data.location is string && data.location.size() < 200)) &&
+             (!('type' in data) || data.type in ['flight', 'hotel', 'activity', 'restaurant', 'transport']);
+    }
+
+    function isValidBlogPost(data) {
+      let allowedFields = ['title', 'content', 'authorId', 'authorName', 'authorPhoto', 'coverImage', 'category', 'tags', 'createdAt', 'isPublished'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.keys().hasAll(['title', 'content', 'authorId', 'authorName', 'category']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 50000 &&
+             data.authorId == request.auth.uid &&
+             data.authorName is string && data.authorName.size() > 0 && data.authorName.size() < 100 &&
+             (!('authorPhoto' in data) || isValidUrl(data.authorPhoto)) &&
+             (!('coverImage' in data) || isValidUrl(data.coverImage)) &&
+             data.category in ['news', 'story', 'culture', 'guide'] &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() < 10)) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('isPublished' in data) || data.isPublished is bool);
+    }
+
+    function isValidMedia(data) {
+      let allowedFields = ['title', 'description', 'url', 'type', 'userId', 'userName', 'createdAt'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.keys().hasAll(['title', 'url', 'type', 'userId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
+             data.url is string && isValidUrl(data.url) &&
+             data.type in ['image', 'video'] &&
+             data.userId == request.auth.uid &&
+             (!('userName' in data) || (data.userName is string && data.userName.size() < 100)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && ((isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)) || isAdmin());
+    }
+
+    match /posts/{postId} {
+      allow read: if resource.data.isPublished == true || (isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin()));
+      allow create: if isAuthenticated() && isValidBlogPost(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin()) && isValidBlogPost(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidBooking(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidBooking(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /trips/{tripId} {
+      allow read: if (isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.collaborators)) || resource.data.isPublic == true;
+      allow create: if isAuthenticated() && isValidTrip(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.collaborators) && isValidTrip(request.resource.data);
+      allow delete: if isTripOwner(tripId);
+
+      match /itinerary/{itemId} {
+        allow read: if isTripCollaborator(tripId) || get(/databases/$(database)/documents/trips/$(tripId)).data.isPublic == true;
+        allow create, update, delete: if isTripCollaborator(tripId) && isValidItineraryItem(request.resource.data);
+      }
+    }
+    match /media/{mediaId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidMedia(request.resource.data);
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidMedia(request.resource.data);
+    }
+  }
+}
